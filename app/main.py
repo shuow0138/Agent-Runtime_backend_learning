@@ -2,6 +2,8 @@ from enum import Enum
 from uuid import uuid4, UUID
 from fastapi import FastAPI, status, HTTPException, Query
 from pydantic import BaseModel, Field
+import asyncio
+import time
 
 app = FastAPI(title = "agent_runtime")
 
@@ -54,7 +56,8 @@ def create_job(job:JobCreate):
 
     return new_job
 
-@app.get("/jobs/{job_id}", response_model = JobResponse)
+@app.get("/jobs/{job_id}", 
+         response_model = JobResponse)
 def get_job(job_id:UUID):
     if job_id not in jobs:
         raise HTTPException(
@@ -63,16 +66,19 @@ def get_job(job_id:UUID):
         )
     return jobs[job_id]
 
-@app.get("/jobs", response_model = list[JobResponse])
+@app.get("/jobs", 
+         response_model = list[JobResponse])
 def get_jobs(
     limit : int = Query(default = 10, ge = 1 , le = 100),
     filter: JobStatus | None = Query(default = None)
 ):
+    all_jobs = list(jobs.values())
     if filter:
-        return list(job for job in jobs.values() if job['status'] == filter)
-    return list(jobs.values())[:limit]
+        all_jobs = [job for job in all_jobs if job['status'] == filter]
+    return all_jobs[:limit]
 
-@app.delete("/jobs/{job_id}", status_code = status.HTTP_204_NO_CONTENT)
+@app.delete("/jobs/{job_id}", 
+            status_code = status.HTTP_204_NO_CONTENT)
 def delete_job(job_id:UUID):
     if job_id not in jobs:
         raise HTTPException(
@@ -87,3 +93,5 @@ def delete_job(job_id:UUID):
         )
     
     del jobs[job_id]
+
+

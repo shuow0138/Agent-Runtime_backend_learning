@@ -72,4 +72,18 @@ def get_jobs(
         return list(job for job in jobs.values() if job['status'] == filter)
     return list(jobs.values())[:limit]
 
+@app.delete("/jobs/{job_id}", status_code = status.HTTP_204_NO_CONTENT)
+def delete_job(job_id:UUID):
+    if job_id not in jobs:
+        raise HTTPException(
+            status_code = status.HTTP_404_NOT_FOUND,
+            detail = "Job Not Found"
+        )
 
+    if jobs[job_id]["status"] == JobStatus.RUNNING:
+        raise HTTPException(
+            status_code = status.HTTP_409_CONFLICT,
+            detail = "cannot remove a running job"
+        )
+    
+    del jobs[job_id]

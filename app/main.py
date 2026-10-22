@@ -1,6 +1,6 @@
 from enum import Enum
 from uuid import uuid4, UUID
-from fastapi import FastAPI, status
+from fastapi import FastAPI, status, HTTPException, Query
 from pydantic import BaseModel, Field
 
 app = FastAPI(title = "agent_runtime")
@@ -19,7 +19,7 @@ class JobResponse(BaseModel):
     id:UUID
     task:str
     status:JobStatus
-    description:str
+    description:str | None = None
 
 jobs = {}
 
@@ -28,7 +28,7 @@ def health():
     return {'status': 'ok'} #You return a Python dictionary. FastAPI automatically serializes it into a JSON HTTP response.
 
 @app.get("/hello/{name}")
-def say_hello(name):
+def say_hello(name:str):
     return {"message": f"Hello, {name}!"}
 
 @app.get("/project_info")
@@ -53,3 +53,23 @@ def create_job(job:JobCreate):
     jobs[job_id] = new_job
 
     return new_job
+
+@app.get("/jobs/{job_id}", response_model = JobResponse)
+def get_job(job_id:UUID):
+    if job_id not in jobs:
+        raise HTTPException(
+            status_code = status.HTTP_404_NOT_FOUND, 
+            detail = "Job Not Found"
+        )
+    return jobs[job_id]
+
+@app.get("/jobs", response_model = list[JobResponse])
+def get_jobs(
+    limit : int = Query(default = 10, ge = 1 , le = 100),
+    filter: JobStatus | None = Query(default = None)
+):
+    if filter:
+        return list(job for job in jobs.values() if job['status'] == filter)
+    return list(jobs.values())[:limit]
+
+
